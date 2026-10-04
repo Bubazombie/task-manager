@@ -19,7 +19,7 @@ export interface Config {
 }
 
 // Fail at startup rather than at the first request that needs a bad value.
-function loadConfig(env: NodeJS.ProcessEnv): Config {
+export function loadConfig(env: NodeJS.ProcessEnv): Config {
   const result = envSchema.safeParse(env)
   if (!result.success) {
     throw new Error(`Invalid environment variables:\n${z.prettifyError(result.error)}`)
