@@ -26,7 +26,7 @@ The codebase will be reviewed and walked through live in a technical interview. 
 - Node.js 24 LTS. TypeScript with `strict` mode in both workspaces.
 - Backend: Express 5, Zod for validation, in-memory persistence. Tests: Vitest + Supertest.
 - Frontend: Vue 3 with Composition API and `<script setup lang="ts">`, Vite, Tailwind CSS v4 via `@tailwindcss/vite`. Tests: Vitest + Vue Test Utils.
-- Tooling: ESLint + Prettier.
+- Tooling: ESLint + Prettier, concurrently (root dev script).
 
 Do not add dependencies beyond this list without asking first and stating why the platform or an existing dependency cannot do the job.
 
@@ -77,6 +77,7 @@ UX and UI requirements:
 
 - Backend: integration tests with Supertest against `createApp` (a fresh repository per test) for every endpoint, covering success, validation failure, and not-found paths. Unit tests for service rules.
 - Frontend: component tests for the form (validation, submit, disabled state) and the list (rendering, empty state, status display), and tests for the composable with the API module mocked.
+- Test files are co-located with the code they test and named `*.test.ts` in both workspaces.
 - Test observable behavior, not implementation details or CSS classes.
 - Never weaken or delete a test to make it pass. If a test fails, decide whether the expectation or the code is wrong, and fix the one that is wrong.
 
