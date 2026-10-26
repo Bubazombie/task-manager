@@ -1,11 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { TaskFilter } from '@/composables/useTaskView'
+import { emptyListMessage } from '@/messages/tasks'
 import type { Task, TaskStatus } from '@/types/task'
 import TaskItem from './TaskItem.vue'
 
 const PLACEHOLDER_ROWS = 3
 
-defineProps<{
+type TaskItemInstance = InstanceType<typeof TaskItem>
+
+const props = defineProps<{
   tasks: readonly Task[]
+  filter: TaskFilter
   loading: boolean
   loadError: string | null
   updatingTaskIds: ReadonlySet<string>
@@ -16,6 +22,28 @@ const emit = defineEmits<{
   retry: []
   'update-status': [id: string, status: TaskStatus]
 }>()
+
+const emptyMessage = computed(() => emptyListMessage(props.filter))
+
+/*
+ * Keyed by task id, because Vue does not keep a v-for ref array in list order. Vue types
+ * function refs as any element or component, so the template narrows them to TaskItem.
+ */
+const itemsById = new Map<string, TaskItemInstance>()
+
+function trackItem(id: string, item: TaskItemInstance | null): void {
+  if (item) {
+    itemsById.set(id, item)
+  } else {
+    itemsById.delete(id)
+  }
+}
+
+function getStatusButton(id: string): HTMLButtonElement | null {
+  return itemsById.get(id)?.getStatusButton() ?? null
+}
+
+defineExpose({ getStatusButton })
 </script>
 
 <template>
@@ -45,13 +73,14 @@ const emit = defineEmits<{
   </div>
 
   <p v-else-if="tasks.length === 0" class="px-4 py-8 text-lg text-ink-muted sm:px-6">
-    No tasks yet. Add your first one above.
+    {{ emptyMessage }}
   </p>
 
   <ul v-else aria-label="Tasks" class="divide-y divide-ink/25">
     <TaskItem
       v-for="task in tasks"
       :key="task.id"
+      :ref="(item) => trackItem(task.id, item as TaskItemInstance | null)"
       :task="task"
       :updating="updatingTaskIds.has(task.id)"
       :error="updateErrors[task.id] ?? null"

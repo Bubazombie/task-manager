@@ -18,8 +18,8 @@ export interface UseTasks {
   updatingTaskIds: Readonly<Ref<ReadonlySet<string>>>
   updateErrors: Readonly<Ref<Readonly<Record<string, string>>>>
   loadTasks(): Promise<void>
-  addTask(title: string): Promise<boolean>
-  updateTaskStatus(id: string, status: TaskStatus): Promise<boolean>
+  addTask(title: string): Promise<Task | null>
+  updateTaskStatus(id: string, status: TaskStatus): Promise<Task | null>
   clearCreateError(): void
 }
 
@@ -29,7 +29,8 @@ function toApiError(error: unknown): ApiError {
     : new ApiError('UNEXPECTED_RESPONSE', UNEXPECTED_ERROR_MESSAGE)
 }
 
-// Tasks are kept newest first; the API returns them in creation order.
+// Tasks are kept in server order (creation order); useTaskView decides how they are shown.
+// Actions resolve to the task from the server, or null when the action failed or was skipped.
 export function useTasks(): UseTasks {
   const tasks = ref<Task[]>([])
   const isLoading = ref(false)
@@ -51,7 +52,7 @@ export function useTasks(): UseTasks {
     isLoading.value = true
     loadError.value = null
     try {
-      tasks.value = (await tasksApi.fetchTasks()).reverse()
+      tasks.value = await tasksApi.fetchTasks()
     } catch (error) {
       loadError.value = getUserMessage(error, LOAD_ERROR_MESSAGE)
     } finally {
@@ -59,37 +60,37 @@ export function useTasks(): UseTasks {
     }
   }
 
-  async function addTask(title: string): Promise<boolean> {
+  async function addTask(title: string): Promise<Task | null> {
     if (isCreating.value) {
-      return false
+      return null
     }
     isCreating.value = true
     createError.value = null
     try {
       const created = await tasksApi.createTask(title)
-      tasks.value = [created, ...tasks.value]
-      return true
+      tasks.value = [...tasks.value, created]
+      return created
     } catch (error) {
       createError.value = toApiError(error)
-      return false
+      return null
     } finally {
       isCreating.value = false
     }
   }
 
-  async function updateTaskStatus(id: string, status: TaskStatus): Promise<boolean> {
+  async function updateTaskStatus(id: string, status: TaskStatus): Promise<Task | null> {
     if (updatingTaskIds.value.has(id)) {
-      return false
+      return null
     }
     updatingTaskIds.value.add(id)
     delete updateErrors.value[id]
     try {
       const updated = await tasksApi.updateTaskStatus(id, status)
       tasks.value = tasks.value.map((task) => (task.id === updated.id ? updated : task))
-      return true
+      return updated
     } catch (error) {
       updateErrors.value[id] = getUserMessage(error, UPDATE_ERROR_MESSAGE)
-      return false
+      return null
     } finally {
       updatingTaskIds.value.delete(id)
     }

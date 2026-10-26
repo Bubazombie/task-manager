@@ -1,12 +1,8 @@
 <script setup lang="ts">
+import { STATUS_LABELS } from '@/messages/tasks'
 import type { TaskStatus } from '@/types/task'
 
 defineProps<{ status: TaskStatus }>()
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  pending: 'Pending',
-  completed: 'Completed',
-}
 </script>
 
 <template>

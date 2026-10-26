@@ -1,17 +1,19 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { NO_TASKS_MESSAGE } from '@/messages/tasks'
 import type { Task } from '@/types/task'
 import TaskList from './TaskList.vue'
 
 const tasks: Task[] = [
-  { id: '2', title: 'Newer task', status: 'pending' },
-  { id: '1', title: 'Older task', status: 'completed' },
+  { id: '2', title: 'Newer task', status: 'pending', createdAt: '2026-03-02T10:00:00.000Z' },
+  { id: '1', title: 'Older task', status: 'completed', createdAt: '2026-03-01T10:00:00.000Z' },
 ]
 
 function mountList(props: Partial<InstanceType<typeof TaskList>['$props']> = {}) {
   return mount(TaskList, {
     props: {
       tasks: [],
+      filter: 'all',
       loading: false,
       loadError: null,
       updatingTaskIds: new Set<string>(),
@@ -32,7 +34,18 @@ describe('TaskList', () => {
   it('shows an empty state when there are no tasks', () => {
     const list = mountList()
 
-    expect(list.text()).toContain('No tasks yet. Add your first one above.')
+    expect(list.text()).toContain(NO_TASKS_MESSAGE)
+    expect(list.find('ul').exists()).toBe(false)
+  })
+
+  it.each([
+    ['pending', 'No pending tasks.'],
+    ['completed', 'No completed tasks.'],
+  ] as const)('shows a message for the %s filter when no task matches', (filter, message) => {
+    const list = mountList({ filter })
+
+    expect(list.text()).toContain(message)
+    expect(list.text()).not.toContain(NO_TASKS_MESSAGE)
   })
 
   it('shows the load error with a Retry button that emits retry', async () => {
@@ -70,5 +83,14 @@ describe('TaskList', () => {
     expect(newer?.find('button').attributes('aria-disabled')).toBeUndefined()
     expect(older?.find('button').attributes('aria-disabled')).toBe('true')
     expect(older?.find('[role="alert"]').text()).toBe('Could not update this task. Try again.')
+  })
+
+  it('gives access to the status button of a task by id', () => {
+    const list = mountList({ tasks })
+
+    const button = list.vm.getStatusButton('1')
+
+    expect(button).toBe(list.findAll('li')[1]?.find('button').element)
+    expect(list.vm.getStatusButton('missing')).toBeNull()
   })
 })

@@ -3,8 +3,18 @@ import { describe, expect, it } from 'vitest'
 import type { Task } from '@/types/task'
 import TaskItem from './TaskItem.vue'
 
-const pendingTask: Task = { id: '1', title: 'Buy milk', status: 'pending' }
-const completedTask: Task = { id: '2', title: 'Water the plants', status: 'completed' }
+const pendingTask: Task = {
+  id: '1',
+  title: 'Buy milk',
+  status: 'pending',
+  createdAt: '2026-03-01T10:00:00.000Z',
+}
+const completedTask: Task = {
+  id: '2',
+  title: 'Water the plants',
+  status: 'completed',
+  createdAt: '2026-03-02T10:00:00.000Z',
+}
 
 function mountItem(task: Task, { updating = false, error = null as string | null } = {}) {
   return mount(TaskItem, { props: { task, updating, error } })

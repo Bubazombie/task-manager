@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import type { Task, TaskStatus } from '@/types/task'
 import TaskStatusBadge from './TaskStatusBadge.vue'
 import TaskStatusMark from './TaskStatusMark.vue'
@@ -12,6 +12,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update-status': [status: TaskStatus] }>()
 
+const statusButton = useTemplateRef('statusButton')
+
 const isCompleted = computed(() => props.task.status === 'completed')
 const actionLabel = computed(() => (isCompleted.value ? 'Mark as pending' : 'Mark as completed'))
 
@@ -22,6 +24,11 @@ function handleClick(): void {
   }
   emit('update-status', isCompleted.value ? 'pending' : 'completed')
 }
+
+// The parent manages focus when rows leave the view, so it needs to reach the button.
+defineExpose({
+  getStatusButton: (): HTMLButtonElement | null => statusButton.value,
+})
 </script>
 
 <template>
@@ -53,6 +60,7 @@ function handleClick(): void {
       </div>
     </div>
     <button
+      ref="statusButton"
       type="button"
       :aria-disabled="updating ? 'true' : undefined"
       class="focus-ring min-h-11 w-full shrink-0 rounded-sm border-2 border-ink bg-surface px-4 font-medium text-ink hover:bg-paper aria-disabled:cursor-not-allowed aria-disabled:opacity-60 sm:w-auto"

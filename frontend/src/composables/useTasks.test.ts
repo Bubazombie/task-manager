@@ -8,8 +8,18 @@ import { LOAD_ERROR_MESSAGE, UPDATE_ERROR_MESSAGE, useTasks } from './useTasks'
 vi.mock('@/api/tasks')
 const api = vi.mocked(tasksApi)
 
-const first: Task = { id: '1', title: 'First', status: 'pending' }
-const second: Task = { id: '2', title: 'Second', status: 'completed' }
+const first: Task = {
+  id: '1',
+  title: 'First',
+  status: 'pending',
+  createdAt: '2026-03-01T10:00:00.000Z',
+}
+const second: Task = {
+  id: '2',
+  title: 'Second',
+  status: 'completed',
+  createdAt: '2026-03-02T10:00:00.000Z',
+}
 const serverError = new ApiError('INTERNAL_ERROR', 'Database connection lost', { status: 500 })
 const networkError = new ApiError('NETWORK_ERROR', NETWORK_ERROR_MESSAGE)
 
@@ -26,7 +36,7 @@ beforeEach(() => {
 
 describe('useTasks', () => {
   describe('loadTasks', () => {
-    it('loads tasks newest first and tracks the loading state', async () => {
+    it('keeps tasks in server order and tracks the loading state', async () => {
       api.fetchTasks.mockResolvedValue([first, second])
       const { tasks, isLoading, loadTasks } = useTasks()
 
@@ -35,7 +45,7 @@ describe('useTasks', () => {
       await loading
 
       expect(isLoading.value).toBe(false)
-      expect(tasks.value).toEqual([second, first])
+      expect(tasks.value).toEqual([first, second])
     })
 
     it('exposes a user-facing message when loading fails', async () => {
@@ -70,30 +80,35 @@ describe('useTasks', () => {
   })
 
   describe('addTask', () => {
-    it('puts the created task first and reports success', async () => {
-      const created: Task = { id: '3', title: 'Third', status: 'pending' }
+    it('appends the created task and resolves to it', async () => {
+      const created: Task = {
+        id: '3',
+        title: 'Third',
+        status: 'pending',
+        createdAt: '2026-03-03T10:00:00.000Z',
+      }
       api.createTask.mockResolvedValue(created)
       const { tasks, isCreating, addTask } = await loadedTasks()
 
       const adding = addTask('Third')
       expect(isCreating.value).toBe(true)
-      const succeeded = await adding
+      const result = await adding
 
-      expect(succeeded).toBe(true)
+      expect(result).toEqual(created)
       expect(isCreating.value).toBe(false)
       expect(api.createTask).toHaveBeenCalledWith('Third')
-      expect(tasks.value).toEqual([created, second, first])
+      expect(tasks.value).toEqual([first, second, created])
     })
 
     it('keeps the error and leaves the list unchanged when creating fails', async () => {
       api.createTask.mockRejectedValue(serverError)
       const { tasks, createError, addTask } = await loadedTasks()
 
-      const succeeded = await addTask('Third')
+      const result = await addTask('Third')
 
-      expect(succeeded).toBe(false)
+      expect(result).toBeNull()
       expect(createError.value).toBe(serverError)
-      expect(tasks.value).toEqual([second, first])
+      expect(tasks.value).toEqual([first, second])
     })
 
     it('clears the create error on request', async () => {
@@ -115,23 +130,23 @@ describe('useTasks', () => {
 
       const updating = updateTaskStatus(first.id, 'completed')
       expect(updatingTaskIds.value.has(first.id)).toBe(true)
-      const succeeded = await updating
+      const result = await updating
 
-      expect(succeeded).toBe(true)
+      expect(result).toEqual(updated)
       expect(updatingTaskIds.value.has(first.id)).toBe(false)
       expect(api.updateTaskStatus).toHaveBeenCalledWith(first.id, 'completed')
-      expect(tasks.value).toEqual([second, updated])
+      expect(tasks.value).toEqual([updated, second])
     })
 
     it('keeps an error for that task and leaves it unchanged when updating fails', async () => {
       api.updateTaskStatus.mockRejectedValue(serverError)
       const { tasks, updateErrors, updateTaskStatus } = await loadedTasks()
 
-      const succeeded = await updateTaskStatus(first.id, 'completed')
+      const result = await updateTaskStatus(first.id, 'completed')
 
-      expect(succeeded).toBe(false)
+      expect(result).toBeNull()
       expect(updateErrors.value[first.id]).toBe(UPDATE_ERROR_MESSAGE)
-      expect(tasks.value).toEqual([second, first])
+      expect(tasks.value).toEqual([first, second])
     })
 
     it('clears the previous error for that task on a new attempt', async () => {

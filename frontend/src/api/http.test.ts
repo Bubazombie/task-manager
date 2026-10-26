@@ -5,6 +5,13 @@ import { NETWORK_ERROR_MESSAGE, request } from './http'
 
 const fetchMock = vi.fn<typeof fetch>()
 
+const storedTask = {
+  id: '1',
+  title: 'Buy milk',
+  status: 'pending',
+  createdAt: '2026-03-01T10:00:00.000Z',
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -23,11 +30,11 @@ afterEach(() => {
 
 describe('request', () => {
   it('returns the parsed body of a successful response', async () => {
-    fetchMock.mockResolvedValue(jsonResponse([{ id: '1', title: 'Buy milk', status: 'pending' }]))
+    fetchMock.mockResolvedValue(jsonResponse([storedTask]))
 
     const data = await request('/tasks')
 
-    expect(data).toEqual([{ id: '1', title: 'Buy milk', status: 'pending' }])
+    expect(data).toEqual([storedTask])
     expect(fetchMock).toHaveBeenCalledWith(
       `${config.apiBaseUrl}/tasks`,
       expect.objectContaining({ method: 'GET' }),
@@ -35,9 +42,7 @@ describe('request', () => {
   })
 
   it('sends a JSON body with the right method and content type', async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse({ id: '1', title: 'Buy milk', status: 'pending' }, 201),
-    )
+    fetchMock.mockResolvedValue(jsonResponse(storedTask, 201))
 
     await request('/tasks', { method: 'POST', body: { title: 'Buy milk' } })
 

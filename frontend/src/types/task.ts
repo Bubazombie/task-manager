@@ -8,4 +8,6 @@ export interface Task {
   id: string
   title: string
   status: TaskStatus
+  // ISO 8601, assigned by the server when the task is created.
+  createdAt: string
 }
