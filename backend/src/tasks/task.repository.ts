@@ -1,6 +1,6 @@
 import type { Task, TaskStatus } from './task.schemas.js'
 
-export type NewTask = Omit<Task, 'id'>
+export type NewTask = Omit<Task, 'id' | 'createdAt'>
 
 // Async so a database-backed implementation can replace the in-memory one without touching callers.
 export interface TaskRepository {

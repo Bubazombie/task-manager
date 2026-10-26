@@ -8,6 +8,8 @@ import { TITLE_MAX_LENGTH } from './task.schemas.js'
 const CORS_ORIGIN = 'http://localhost:5173'
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const UNKNOWN_ID = '00000000-0000-4000-8000-000000000000'
+const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+const CLIENT_CREATED_AT = '2020-01-01T00:00:00.000Z'
 
 let app: Express
 
@@ -45,7 +47,7 @@ describe('GET /tasks', () => {
 })
 
 describe('POST /tasks', () => {
-  it('creates a pending task with a generated id', async () => {
+  it('creates a pending task with a generated id and creation time', async () => {
     const response = await postTask({ title: 'Buy milk' })
 
     expect(response.status).toBe(201)
@@ -53,7 +55,20 @@ describe('POST /tasks', () => {
       id: expect.stringMatching(UUID_PATTERN),
       title: 'Buy milk',
       status: 'pending',
+      createdAt: expect.stringMatching(ISO_TIMESTAMP_PATTERN),
     })
+  })
+
+  it('takes the creation time from the server clock', async () => {
+    const now = new Date('2026-03-14T09:26:53.589Z')
+    const clockedApp = createApp({
+      corsOrigin: CORS_ORIGIN,
+      taskRepository: new InMemoryTaskRepository(() => now),
+    })
+
+    const response = await request(clockedApp).post('/tasks').send({ title: 'Buy milk' })
+
+    expect(response.body.createdAt).toBe(now.toISOString())
   })
 
   it('trims the title', async () => {
@@ -104,6 +119,16 @@ describe('POST /tasks', () => {
 
     expectValidationError(response, 'id')
     expect(response.body.error.details).toContainEqual({ field: 'id', message: 'Unknown field' })
+  })
+
+  it('rejects a client-provided createdAt as an unknown field', async () => {
+    const response = await postTask({ title: 'Buy milk', createdAt: CLIENT_CREATED_AT })
+
+    expectValidationError(response, 'createdAt')
+    expect(response.body.error.details).toContainEqual({
+      field: 'createdAt',
+      message: 'Unknown field',
+    })
   })
 
   it('rejects a body that is not JSON', async () => {
@@ -200,5 +225,19 @@ describe('PATCH /tasks/:id', () => {
       .send({ status: 'completed', title: 'Renamed' })
 
     expectValidationError(response, 'title')
+  })
+
+  it('rejects a client-provided createdAt as an unknown field', async () => {
+    const created = await postTask({ title: 'Buy milk' })
+
+    const response = await request(app)
+      .patch(`/tasks/${created.body.id}`)
+      .send({ status: 'completed', createdAt: CLIENT_CREATED_AT })
+
+    expectValidationError(response, 'createdAt')
+    expect(response.body.error.details).toContainEqual({
+      field: 'createdAt',
+      message: 'Unknown field',
+    })
   })
 })
